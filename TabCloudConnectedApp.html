@@ -1,0 +1,86 @@
+<html>
+  <head>
+    <link href="styles.css" rel="stylesheet" />
+    <title>Welcome to APJ ConnectedApp Demo</title>
+  </head>
+  <body>
+    <div id="container" style="width: 800px; height: 700px">
+      <tableau-viz id="tableauViz" ></tableau-viz>
+    
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/uuid/8.1.0/uuidv4.min.js"></script>
+    
+    <script type="module">
+      import { TableauEventType } from "https://[3]YOUR-TABLEAU-CLOUD-NAME/javascripts/api/tableau.embedding.3.latest.js";
+
+      const config = {
+        workbookUrl:
+          "[2]YOUR-DASHBOARD-URL", 
+          // EXAMPLE - https://10az.online.tableau.com/t/gsisg/views/Superstore/Product
+          // IMPORTANT NOTE: COPY THE DASHBOARD URL FROM SHARE BUTTON, VIZ DOESN'T LOAD IF YOU COPY FROM BROWSER ADDRESS BAR
+        username: "[1]YOUR USERNAME",
+        scopes: ["tableau:views:embed", "tableau:views:embed_authoring"],
+        connectedApp: {
+          secretId: "YOUR CONNECTED APP SECRET ID",
+          secret: "YOUR CONNECTED APP SECRET KEY",
+          clientId: "YOUR CONNECTED APP CLIENT ID",
+        },
+      };
+
+      const signedToken = getJwt();
+
+      const viz = document.getElementById("tableauViz");
+      viz.token = signedToken;
+      viz.src = config.workbookUrl;
+
+      function getJwt() {
+        const header = {
+          alg: "HS256",
+          typ: "JWT",
+          kid: config.connectedApp.secretId,
+          iss: config.connectedApp.clientId,
+        };
+
+        const data = {
+          jti: uuidv4(),
+          iss: config.connectedApp.clientId,
+          aud: "tableau",
+          sub: config.username,
+          scp: config.scopes,
+          iat: Math.floor(Date.now() / 1000) - 5,
+          exp: Math.floor(Date.now() / 1000) + 5 * 60,
+        };
+
+        const encodedHeader = base64url(
+          CryptoJS.enc.Utf8.parse(JSON.stringify(header))
+        );
+        const encodedData = base64url(
+          CryptoJS.enc.Utf8.parse(JSON.stringify(data))
+        );
+
+        const token = `${encodedHeader}.${encodedData}`;
+        const signature = base64url(
+          CryptoJS.HmacSHA256(token, config.connectedApp.secret)
+        );
+
+        return `${token}.${signature}`;
+      }
+
+      function base64url(source) {
+        // Encode in classical base64
+        var encodedSource = CryptoJS.enc.Base64.stringify(source);
+
+        // Remove padding equal characters
+        encodedSource = encodedSource.replace(/=+$/, "");
+
+        // Replace characters according to base64url specifications
+        encodedSource = encodedSource.replace(/\+/g, "-");
+        encodedSource = encodedSource.replace(/\//g, "_");
+
+        return encodedSource;
+      }
+    </script>
+  </body>
+</html>
